@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+import math
 
 app = Flask(__name__)
 
@@ -20,37 +21,54 @@ HOA_FEES = {
     "Summit NJ": 200
 }
 
-def calculate_home_price(annual_income, has_trust_fund, trust_fund_amount, city, interest_rate):
-    base_price = annual_income * 4
-    
-    city_factors = {
-        "NYC": 2.0,
-        "Greenwich CT": 1.8,
-        "Nassau County": 1.6,
-        "Ridgewood NJ": 1.5,
-        "Summit NJ": 1.7
-    }
-    
-    city_factor = city_factors.get(city, 1.0)
-    
-    adjusted_price = base_price * city_factor * (1 - (interest_rate / 100))
-    
-    return round(adjusted_price, 2)
+def calculate_max_home_price(max_monthly_payment, interest_rate, city, trust_fund_amount):
+    annual_interest_rate = interest_rate / 100
+    monthly_interest_rate = annual_interest_rate / 12
+    loan_term_months = 30 * 12
 
-def calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount):
-    monthly_mortgage = (home_price * (interest_rate / 100 / 12)) / (1 - (1 + (interest_rate / 100 / 12)) ** -360)
+    property_tax_rate = PROPERTY_TAX_RATES[city]
+    monthly_hoa = HOA_FEES[city]
+
+    # Calculate trust fund monthly return
+    trust_fund_monthly_return = (trust_fund_amount * 0.04) / 12 if trust_fund_amount >= 1000000 else 0
+
+    # Adjust max_monthly_payment to include trust fund return
+    adjusted_max_monthly_payment = max_monthly_payment + trust_fund_monthly_return
+
+    # Calculate the maximum loan amount
+    max_loan_amount = (adjusted_max_monthly_payment * (1 - (1 + monthly_interest_rate) ** -loan_term_months)) / monthly_interest_rate
+
+    # Calculate max home price (assuming 20% down payment)
+    max_home_price = max_loan_amount / 0.8
+
+    # Adjust for property tax, insurance, and HOA
+    monthly_costs = (max_home_price * property_tax_rate / 12) + (max_home_price * 0.003 / 12) + monthly_hoa
+    while (max_home_price * 0.8 * monthly_interest_rate * (1 + monthly_interest_rate) ** loan_term_months) / ((1 + monthly_interest_rate) ** loan_term_months - 1) + monthly_costs - trust_fund_monthly_return > max_monthly_payment:
+        max_home_price *= 0.99
+
+    return max_home_price
+
+def calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount, down_payment_info):
+    annual_interest_rate = interest_rate / 100
+    monthly_interest_rate = annual_interest_rate / 12
+    loan_term_months = 30 * 12
+
+    loan_amount = home_price * 0.8  # Assuming 20% down payment
+    monthly_mortgage = (loan_amount * monthly_interest_rate * (1 + monthly_interest_rate) ** loan_term_months) / ((1 + monthly_interest_rate) ** loan_term_months - 1)
+
     monthly_property_tax = (home_price * PROPERTY_TAX_RATES[city]) / 12
     monthly_insurance = (home_price * 0.003) / 12
     monthly_hoa = HOA_FEES[city]
-    
+
     total_monthly = monthly_mortgage + monthly_property_tax + monthly_insurance + monthly_hoa
-    
+
+    remaining_trust_fund = down_payment_info['remaining_trust_fund']
     trust_fund_credit = 0
-    if trust_fund_amount >= 1000000:
-        monthly_interest = (trust_fund_amount * 0.04) / 12
+    if remaining_trust_fund >= 1000000:
+        monthly_interest = (remaining_trust_fund * 0.04) / 12
         trust_fund_credit = min(monthly_interest, total_monthly)
         total_monthly -= trust_fund_credit
-    
+
     return {
         "mortgage": round(monthly_mortgage, 2),
         "property_tax": round(monthly_property_tax, 2),
@@ -60,32 +78,26 @@ def calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount):
         "total": round(total_monthly, 2)
     }
 
-def calculate_down_payment(home_price, annual_income, total_savings, trust_fund_amount):
+def calculate_down_payment(home_price, total_savings, trust_fund_amount):
     required_down_payment = home_price * 0.2
-    
-    max_savings_for_down_payment = min(total_savings * 0.2, required_down_payment)
+    max_savings_for_down_payment = total_savings * 0.35
+
     down_payment_from_savings = min(max_savings_for_down_payment, required_down_payment)
     remaining_down_payment = required_down_payment - down_payment_from_savings
-    
-    down_payment_from_income = min(annual_income * 0.2, remaining_down_payment)
-    remaining_down_payment -= down_payment_from_income
-    
-    down_payment_from_trust = 0
-    if trust_fund_amount < 1000000:
-        down_payment_from_trust = min(trust_fund_amount, remaining_down_payment)
-    else:
-        down_payment_from_trust = min(trust_fund_amount * 0.2, remaining_down_payment)
-    
-    total_down_payment = down_payment_from_savings + down_payment_from_income + down_payment_from_trust
+
+    down_payment_from_trust = min(trust_fund_amount, remaining_down_payment)
+    remaining_trust_fund = trust_fund_amount - down_payment_from_trust
+
+    total_down_payment = down_payment_from_savings + down_payment_from_trust
     shortfall = max(0, required_down_payment - total_down_payment)
-    
+
     return {
         "total": round(total_down_payment, 2),
         "from_savings": round(down_payment_from_savings, 2),
-        "from_income": round(down_payment_from_income, 2),
         "from_trust": round(down_payment_from_trust, 2),
         "shortfall": round(shortfall, 2),
-        "required": round(required_down_payment, 2)
+        "required": round(required_down_payment, 2),
+        "remaining_trust_fund": round(remaining_trust_fund, 2)
     }
 
 @app.route('/')
@@ -125,33 +137,76 @@ def calculate():
     if errors:
         return jsonify({"errors": errors}), 400
     
-    home_price = calculate_home_price(
-        int(data['annualIncome']),
-        has_trust_fund,
-        trust_fund_amount,
-        data['city'],
-        float(data['interestRate'])
-    )
-    
-    monthly_costs = calculate_monthly_costs(
-        home_price,
-        data['city'],
-        float(data['interestRate']),
-        trust_fund_amount
-    )
-    
-    down_payment = calculate_down_payment(
-        home_price,
-        int(data['annualIncome']),
-        int(data['totalSavings']),
-        trust_fund_amount
-    )
-    
+    annual_income = int(data['annualIncome'])
+    total_savings = int(data['totalSavings'])
+    city = data['city']
+    interest_rate = float(data['interestRate'])
+
+    monthly_income = annual_income / 12
+    max_monthly_payment = monthly_income * 0.28
+
+    max_home_price_monthly = calculate_max_home_price(max_monthly_payment, interest_rate, city, trust_fund_amount)
+    max_down_payment = (total_savings * 0.35) + trust_fund_amount
+    max_home_price_down_payment = max_down_payment / 0.2
+
+    home_price = min(max_home_price_monthly, max_home_price_down_payment)
+
+    down_payment = calculate_down_payment(home_price, total_savings, trust_fund_amount)
+    monthly_costs = calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount, down_payment)
+
+    price_determination = "monthly payment limit" if home_price == max_home_price_monthly else "down payment limit"
+
     return jsonify({
-        "homePrice": home_price,
+        "homePrice": round(home_price, 2),
         "monthlyCosts": monthly_costs,
-        "downPayment": down_payment
+        "downPayment": down_payment,
+        "priceDetermination": price_determination
     })
 
+def test_calculation():
+    annual_income = 250000
+    total_savings = 250000
+    trust_fund_amount = 5000000
+    city = "NYC"
+    interest_rate = 6
+
+    print(f"Test Calculation Inputs:")
+    print(f"Annual Income: ${annual_income:,}")
+    print(f"Total Savings: ${total_savings:,}")
+    print(f"Trust Fund Amount: ${trust_fund_amount:,}")
+    print(f"City: {city}")
+    print(f"Interest Rate: {interest_rate}%")
+    print("\nCalculation Process:")
+
+    monthly_income = annual_income / 12
+    max_monthly_payment = monthly_income * 0.28
+    print(f"Monthly Income: ${monthly_income:,.2f}")
+    print(f"Max Monthly Payment (28% of monthly income): ${max_monthly_payment:,.2f}")
+
+    max_home_price_monthly = calculate_max_home_price(max_monthly_payment, interest_rate, city, trust_fund_amount)
+    print(f"\nMax home price based on monthly payment (including trust fund return): ${max_home_price_monthly:,.2f}")
+
+    max_down_payment = (total_savings * 0.35) + trust_fund_amount
+    max_home_price_down_payment = max_down_payment / 0.2
+    print(f"Max down payment (35% of savings + trust fund): ${max_down_payment:,.2f}")
+    print(f"Max home price based on down payment: ${max_home_price_down_payment:,.2f}")
+
+    home_price = min(max_home_price_monthly, max_home_price_down_payment)
+    print(f"\nFinal recommended home price: ${home_price:,.2f}")
+
+    down_payment = calculate_down_payment(home_price, total_savings, trust_fund_amount)
+    monthly_costs = calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount, down_payment)
+
+    print(f"\nMonthly Costs Breakdown:")
+    for key, value in monthly_costs.items():
+        print(f"  {key.capitalize()}: ${value:,.2f}")
+    
+    print(f"\nDown Payment Breakdown:")
+    for key, value in down_payment.items():
+        print(f"  {key.capitalize()}: ${value:,.2f}")
+
 if __name__ == "__main__":
+    print("Running test calculation...")
+    test_calculation()
+    print("\nStarting Flask server...")
     app.run(host="0.0.0.0", port=5000)
