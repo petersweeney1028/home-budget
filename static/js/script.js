@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const interestRateValue = document.getElementById('interestRateValue');
     const hasTrustFundSelect = document.getElementById('hasTrustFund');
     const trustFundAmountGroup = document.getElementById('trustFundAmountGroup');
+    let monthlyCostsChart = null;
 
     interestRateSlider.addEventListener('input', function() {
         interestRateValue.textContent = this.value;
@@ -100,6 +101,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     ` : ''}
                     <p><strong>Note:</strong> This is an estimate intended for initial planning purposes only. For a more accurate assessment of your home buying budget, please consult with a financial advisor and a local real estate professional who can provide personalized advice based on your specific financial situation and local market conditions.</p>
                 `;
+
+                // Create or update the monthly costs chart
+                createMonthlyCostsChart(data.monthlyCosts);
             }
         })
         .catch((error) => {
@@ -107,4 +111,57 @@ document.addEventListener('DOMContentLoaded', function() {
             resultDiv.innerHTML = '<p>An error occurred. Please try again later.</p>';
         });
     });
+
+    function createMonthlyCostsChart(monthlyCosts) {
+        const ctx = document.getElementById('monthlyCostsChart').getContext('2d');
+        
+        // Prepare data for the chart
+        const chartData = {
+            labels: ['Mortgage (P&I)', 'Property Tax', 'Homeowners Insurance', 'HOA Fees'],
+            datasets: [{
+                data: [
+                    monthlyCosts.mortgage,
+                    monthlyCosts.property_tax,
+                    monthlyCosts.insurance,
+                    monthlyCosts.hoa
+                ],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)'
+                ],
+                borderWidth: 1
+            }]
+        };
+
+        // Destroy existing chart if it exists
+        if (monthlyCostsChart) {
+            monthlyCostsChart.destroy();
+        }
+
+        // Create new chart
+        monthlyCostsChart = new Chart(ctx, {
+            type: 'pie',
+            data: chartData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Monthly Costs Breakdown'
+                    }
+                }
+            }
+        });
+    }
 });
