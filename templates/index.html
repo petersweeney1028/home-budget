@@ -13,49 +13,48 @@
         <h1 class="mt-5 mb-4">Home Buying Budget Estimator</h1>
         <form id="budgetForm">
             <div class="form-group">
-                <label for="annualIncome">Annual Income ($):</label>
-                <input type="number" class="form-control" id="annualIncome" name="annualIncome" required>
-                <div id="annualIncomeError" class="error"></div>
+                <label for="annualIncome">Annual Income:</label>
+                <input type="number" id="annualIncome" name="annualIncome" required>
             </div>
             <div class="form-group">
-                <label for="totalSavings">Total Savings ($):</label>
-                <input type="number" class="form-control" id="totalSavings" name="totalSavings" required>
-                <div id="totalSavingsError" class="error"></div>
+                <label for="totalSavings">Total Savings:</label>
+                <input type="number" id="totalSavings" name="totalSavings" required>
             </div>
             <div class="form-group">
                 <label for="hasTrustFund">Do you have a trust fund?</label>
-                <select class="form-control" id="hasTrustFund" name="hasTrustFund" required>
+                <select id="hasTrustFund" name="hasTrustFund" required>
                     <option value="no">No</option>
                     <option value="yes">Yes</option>
                 </select>
             </div>
-            <div class="form-group" id="trustFundAmountGroup" style="display: none;">
-                <label for="trustFundAmount">Trust Fund Amount ($):</label>
-                <input type="number" class="form-control" id="trustFundAmount" name="trustFundAmount">
-                <div id="trustFundAmountError" class="error"></div>
+            <div class="form-group" id="trustFundAmountGroup" style="display:none;">
+                <label for="trustFundAmount">Trust Fund Amount:</label>
+                <input type="number" id="trustFundAmount" name="trustFundAmount">
             </div>
             <div class="form-group">
                 <label for="city">City:</label>
-                <select class="form-control" id="city" name="city" required>
-                    <option value="">Select a city</option>
+                <select id="city" name="city" required>
                     <option value="NYC">NYC</option>
                     <option value="Greenwich CT">Greenwich CT</option>
                     <option value="Nassau County">Nassau County</option>
                     <option value="Ridgewood NJ">Ridgewood NJ</option>
                     <option value="Summit NJ">Summit NJ</option>
                 </select>
-                <div id="cityError" class="error"></div>
             </div>
             <div class="form-group">
-                <label for="interestRate">Interest Rate: <span id="interestRateValue">5.5</span>%</label>
-                <input type="range" class="form-control-range" id="interestRate" name="interestRate" min="5.5" max="15" step="0.25" value="5.5">
-                <div id="interestRateError" class="error"></div>
+                <label for="interestRate">Interest Rate:</label>
+                <input type="range" id="interestRate" name="interestRate" min="5.5" max="15" step="0.25" value="6" required>
+                <span id="interestRateValue">6%</span>
             </div>
             <button type="submit" class="btn btn-primary">Calculate</button>
         </form>
         <div id="result" class="mt-4"></div>
         <div class="mt-4">
             <canvas id="monthlyCostsChart"></canvas>
+        </div>
+        <div id="savedScenarios" class="mt-4">
+            <h2>Saved Scenarios</h2>
+            <div id="scenariosList"></div>
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
