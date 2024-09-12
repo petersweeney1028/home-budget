@@ -65,7 +65,18 @@ document.addEventListener('DOMContentLoaded', function() {
             <p>Recommended home price: $${data.homePrice.toLocaleString()}</p>
             <p>Limiting factor: ${data.limitingFactor}</p>
             <p>Monthly payment: $${data.monthlyCosts.total.toLocaleString()}</p>
-            <p>Down payment: $${data.downPayment.total.toLocaleString()}</p>
+            
+            <h3>Down Payment Breakdown:</h3>
+            <ul>
+                <li>Required Down Payment: $${data.downPayment.required.toLocaleString()}</li>
+                <li>Total Down Payment: $${data.downPayment.total.toLocaleString()}</li>
+                <li>From Savings (max 35%): $${data.downPayment.from_savings.toLocaleString()}</li>
+                <li>From Trust Fund (max 20%): $${data.downPayment.from_trust.toLocaleString()}</li>
+                <li>Shortfall: $${data.downPayment.shortfall.toLocaleString()}</li>
+                <li>Remaining Savings: $${data.downPayment.remaining_savings.toLocaleString()}</li>
+                <li>Remaining Trust Fund: $${data.downPayment.remaining_trust_fund.toLocaleString()}</li>
+            </ul>
+            
             <h3>Monthly Costs Breakdown:</h3>
             <ul>
                 <li>Mortgage: $${data.monthlyCosts.mortgage.toLocaleString()}</li>
@@ -74,10 +85,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 <li>HOA: $${data.monthlyCosts.hoa.toLocaleString()}</li>
                 <li>Trust Fund Credit: $${data.monthlyCosts.trust_fund_credit.toLocaleString()}</li>
             </ul>
+            
             <h3>Assumptions:</h3>
             <ul>
                 ${Object.entries(data.assumptions).map(([key, value]) => `<li>${key}: ${value}</li>`).join('')}
             </ul>
+            
             <h3>Explanations:</h3>
             <ul>
                 ${data.explanations.map(explanation => `<li>${explanation}</li>`).join('')}

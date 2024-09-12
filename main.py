@@ -61,7 +61,7 @@ def calculate_max_home_price(max_monthly_payment, interest_rate, city, trust_fun
 
     return max_home_price, limiting_factor
 
-def calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount):
+def calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount, down_payment):
     annual_interest_rate = interest_rate / 100
     monthly_interest_rate = annual_interest_rate / 12
     loan_term_months = 30 * 12
@@ -71,7 +71,8 @@ def calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount):
     property_tax = (home_price * PROPERTY_TAX_RATES[city]) / 12
     insurance = (home_price * 0.003) / 12
     hoa = HOA_FEES[city]
-    trust_fund_credit = (trust_fund_amount * 0.04) / 12 if trust_fund_amount >= 1000000 else 0
+    remaining_trust_fund = trust_fund_amount - down_payment['from_trust']
+    trust_fund_credit = (remaining_trust_fund * 0.04) / 12 if remaining_trust_fund >= 1000000 else 0
 
     total = mortgage_payment + property_tax + insurance + hoa - trust_fund_credit
 
@@ -86,18 +87,24 @@ def calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount):
 
 def calculate_down_payment(home_price, total_savings, trust_fund_amount):
     required = home_price * 0.2
-    from_savings = min(total_savings, required)
-    shortfall = max(0, required - from_savings)
-    from_trust = min(trust_fund_amount, shortfall)
-    remaining_shortfall = max(0, shortfall - from_trust)
+    max_from_savings = min(total_savings * 0.35, required)
+    from_savings = min(max_from_savings, required)
+    remaining_required = required - from_savings
+    
+    max_from_trust = min(trust_fund_amount * 0.2, remaining_required)
+    from_trust = min(max_from_trust, remaining_required)
+    
+    total_down_payment = from_savings + from_trust
+    shortfall = max(0, required - total_down_payment)
     
     return {
-        "total": round(from_savings + from_trust, 2),
+        "total": round(total_down_payment, 2),
         "from_savings": round(from_savings, 2),
         "from_trust": round(from_trust, 2),
-        "shortfall": round(remaining_shortfall, 2),
+        "shortfall": round(shortfall, 2),
         "required": round(required, 2),
-        "remaining_trust_fund": round(trust_fund_amount - from_trust, 2)
+        "remaining_trust_fund": round(trust_fund_amount - from_trust, 2),
+        "remaining_savings": round(total_savings - from_savings, 2)
     }
 
 @app.route('/')
@@ -122,8 +129,8 @@ def calculate():
     total_savings = float(data['totalSavings'])
     
     home_price, limiting_factor = calculate_max_home_price(max_monthly_payment, interest_rate, data['city'], trust_fund_amount, total_savings)
-    monthly_costs = calculate_monthly_costs(home_price, data['city'], interest_rate, trust_fund_amount)
     down_payment = calculate_down_payment(home_price, total_savings, trust_fund_amount)
+    monthly_costs = calculate_monthly_costs(home_price, data['city'], interest_rate, trust_fund_amount, down_payment)
     
     result = {
         "homePrice": round(home_price, 2),
@@ -131,15 +138,15 @@ def calculate():
         "downPayment": down_payment,
         "limitingFactor": limiting_factor,
         "assumptions": {
-            "property_tax_rate": PROPERTY_TAX_RATES[data['city']],
-            "insurance_rate": 0.003,
-            "hoa_fee": HOA_FEES[data['city']],
-            "loan_term": 30,
-            "down_payment_percentage": 0.2
+            "Property Tax Rate": f"{PROPERTY_TAX_RATES[data['city']] * 100:.2f}%",
+            "Insurance Rate": "0.3% of home value annually",
+            "HOA Fee": f"${HOA_FEES[data['city']]} per month",
+            "Loan Term": "30 years",
+            "Down Payment": "20% of home price"
         },
         "explanations": [
             "The maximum home price is calculated based on your monthly income and other financial factors.",
-            f"We assume a {PROPERTY_TAX_RATES[data['city']] * 100}% annual property tax rate for {data['city']}.",
+            f"We assume a {PROPERTY_TAX_RATES[data['city']] * 100:.2f}% annual property tax rate for {data['city']}.",
             "Homeowners insurance is estimated at 0.3% of the home value annually.",
             f"HOA fees for {data['city']} are estimated at ${HOA_FEES[data['city']]} per month.",
             "We assume a 30-year fixed-rate mortgage with a 20% down payment.",
