@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
         resultDiv.innerHTML = `
             <h2>Home Buying Budget Estimate</h2>
             <p>Recommended home price: $${data.homePrice.toLocaleString()}</p>
+            <p>Limiting factor: ${data.limitingFactor}</p>
             <p>Monthly payment: $${data.monthlyCosts.total.toLocaleString()}</p>
             <p>Down payment: $${data.downPayment.total.toLocaleString()}</p>
             <h3>Monthly Costs Breakdown:</h3>
@@ -151,6 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h3>${scenario.name || 'Unnamed Scenario'}</h3>
                     <p>Home Price: $${scenario.result.homePrice.toLocaleString()}</p>
                     <p>Monthly Payment: $${scenario.result.monthlyCosts.total.toLocaleString()}</p>
+                    <p>Limiting Factor: ${scenario.result.limitingFactor}</p>
                     <button class="btn btn-sm btn-info compare-btn" data-id="${id}">Compare</button>
                     <button class="btn btn-sm btn-danger delete-btn" data-id="${id}">Delete</button>
                 `;

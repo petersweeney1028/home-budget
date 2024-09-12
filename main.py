@@ -23,7 +23,7 @@ HOA_FEES = {
     "Summit NJ": 200
 }
 
-def calculate_max_home_price(max_monthly_payment, interest_rate, city, trust_fund_amount):
+def calculate_max_home_price(max_monthly_payment, interest_rate, city, trust_fund_amount, total_savings):
     annual_interest_rate = interest_rate / 100
     monthly_interest_rate = annual_interest_rate / 12
     loan_term_months = 30 * 12
@@ -37,18 +37,29 @@ def calculate_max_home_price(max_monthly_payment, interest_rate, city, trust_fun
     # Adjust max_monthly_payment to include trust fund return
     adjusted_max_monthly_payment = max_monthly_payment + trust_fund_monthly_return
 
-    # Calculate the maximum loan amount
+    # Calculate the maximum loan amount based on monthly payment
     max_loan_amount = (adjusted_max_monthly_payment * (1 - (1 + monthly_interest_rate) ** -loan_term_months)) / monthly_interest_rate
 
-    # Calculate max home price (assuming 20% down payment)
-    max_home_price = max_loan_amount / 0.8
+    # Calculate max home price based on monthly payment (assuming 20% down payment)
+    max_price_monthly = max_loan_amount / 0.8
+
+    # Calculate max home price based on down payment
+    max_price_down_payment = (total_savings + trust_fund_amount) / 0.2
+
+    # Determine the limiting factor
+    if max_price_monthly <= max_price_down_payment:
+        limiting_factor = "monthly payment"
+        max_home_price = max_price_monthly
+    else:
+        limiting_factor = "down payment"
+        max_home_price = max_price_down_payment
 
     # Adjust for property tax, insurance, and HOA
     monthly_costs = (max_home_price * property_tax_rate / 12) + (max_home_price * 0.003 / 12) + monthly_hoa
     while (max_home_price * 0.8 * monthly_interest_rate * (1 + monthly_interest_rate) ** loan_term_months) / ((1 + monthly_interest_rate) ** loan_term_months - 1) + monthly_costs - trust_fund_monthly_return > max_monthly_payment:
         max_home_price *= 0.99
 
-    return max_home_price
+    return max_home_price, limiting_factor
 
 def calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount):
     annual_interest_rate = interest_rate / 100
@@ -107,15 +118,18 @@ def calculate():
     # Convert trust fund amount to float if it exists
     trust_fund_amount = float(data['trustFundAmount']) if data['hasTrustFund'] == 'yes' else 0
     
-    home_price = calculate_max_home_price(max_monthly_payment, interest_rate, data['city'], trust_fund_amount)
+    # Convert total savings to float
+    total_savings = float(data['totalSavings'])
+    
+    home_price, limiting_factor = calculate_max_home_price(max_monthly_payment, interest_rate, data['city'], trust_fund_amount, total_savings)
     monthly_costs = calculate_monthly_costs(home_price, data['city'], interest_rate, trust_fund_amount)
-    down_payment = calculate_down_payment(home_price, float(data['totalSavings']), trust_fund_amount)
+    down_payment = calculate_down_payment(home_price, total_savings, trust_fund_amount)
     
     result = {
         "homePrice": round(home_price, 2),
         "monthlyCosts": monthly_costs,
         "downPayment": down_payment,
-        "priceDetermination": "monthly payment limit",  # or "down payment limit"
+        "limitingFactor": limiting_factor,
         "assumptions": {
             "property_tax_rate": PROPERTY_TAX_RATES[data['city']],
             "insurance_rate": 0.003,
