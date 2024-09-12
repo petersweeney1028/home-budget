@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify, session
-import math
 import uuid
 
 app = Flask(__name__)
@@ -175,6 +174,8 @@ def scenarios():
     elif request.method == 'POST':
         data = request.json
         scenario_id = str(uuid.uuid4())
+        if 'scenarios' not in session:
+            session['scenarios'] = {}
         session['scenarios'][scenario_id] = data
         session.modified = True
         return jsonify({"message": "Scenario saved successfully", "scenarioId": scenario_id})
