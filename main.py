@@ -30,22 +30,16 @@ def calculate_max_home_price(max_monthly_payment, interest_rate, city, trust_fun
     property_tax_rate = PROPERTY_TAX_RATES[city]
     monthly_hoa = HOA_FEES[city]
 
-    # Calculate trust fund monthly return
     trust_fund_monthly_return = (trust_fund_amount * 0.04) / 12 if trust_fund_amount >= 1000000 else 0
 
-    # Adjust max_monthly_payment to include trust fund return
     adjusted_max_monthly_payment = max_monthly_payment + trust_fund_monthly_return
 
-    # Calculate the maximum loan amount based on monthly payment
     max_loan_amount = (adjusted_max_monthly_payment * (1 - (1 + monthly_interest_rate) ** -loan_term_months)) / monthly_interest_rate
 
-    # Calculate max home price based on monthly payment (assuming 20% down payment)
     max_price_monthly = max_loan_amount / 0.8
 
-    # Calculate max home price based on down payment
     max_price_down_payment = (total_savings + trust_fund_amount) / 0.2
 
-    # Determine the limiting factor
     if max_price_monthly <= max_price_down_payment:
         limiting_factor = "monthly payment"
         max_home_price = max_price_monthly
@@ -53,7 +47,6 @@ def calculate_max_home_price(max_monthly_payment, interest_rate, city, trust_fun
         limiting_factor = "down payment"
         max_home_price = max_price_down_payment
 
-    # Adjust for property tax, insurance, and HOA
     monthly_costs = (max_home_price * property_tax_rate / 12) + (max_home_price * 0.003 / 12) + monthly_hoa
     while (max_home_price * 0.8 * monthly_interest_rate * (1 + monthly_interest_rate) ** loan_term_months) / ((1 + monthly_interest_rate) ** loan_term_months - 1) + monthly_costs - trust_fund_monthly_return > max_monthly_payment:
         max_home_price *= 0.99
@@ -114,17 +107,13 @@ def index():
 def calculate():
     data = request.json
     
-    # Calculate max monthly payment
     annual_income = float(data['annualIncome'])
     max_monthly_payment = (annual_income / 12) * 0.28
     
-    # Convert interest rate to float
     interest_rate = float(data['interestRate'])
     
-    # Convert trust fund amount to float if it exists
     trust_fund_amount = float(data['trustFundAmount']) if data['hasTrustFund'] == 'yes' else 0
     
-    # Convert total savings to float
     total_savings = float(data['totalSavings'])
     
     home_price, limiting_factor = calculate_max_home_price(max_monthly_payment, interest_rate, data['city'], trust_fund_amount, total_savings)
@@ -153,10 +142,8 @@ def calculate():
         ]
     }
     
-    # Generate a unique ID for this scenario
     scenario_id = str(uuid.uuid4())
     
-    # Store the scenario in the session
     if 'scenarios' not in session:
         session['scenarios'] = {}
     session['scenarios'][scenario_id] = {
@@ -176,6 +163,8 @@ def scenarios():
         scenario_id = str(uuid.uuid4())
         if 'scenarios' not in session:
             session['scenarios'] = {}
+        scenario_count = len(session['scenarios']) + 1
+        data['name'] = f"Scenario {scenario_count}"
         session['scenarios'][scenario_id] = data
         session.modified = True
         return jsonify({"message": "Scenario saved successfully", "scenarioId": scenario_id})

@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const scenariosList = document.getElementById('scenariosList');
     let monthlyCostsChart = null;
 
-    // Handle trust fund input visibility
     hasTrustFundSelect.addEventListener('change', function() {
         if (this.value === 'yes') {
             trustFundAmountGroup.style.display = 'block';
@@ -17,7 +16,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Update the interest rate value display
     interestRateSlider.addEventListener('input', function() {
         interestRateValue.textContent = this.value + '%';
     });
@@ -211,6 +209,5 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => console.error('Error:', error));
     }
 
-    // Load saved scenarios on page load
     loadScenarios();
 });
