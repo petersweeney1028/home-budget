@@ -140,6 +140,12 @@ def calculate():
         ]
     }
     
+    if data['hasTrustFund'] == 'yes':
+        result["explanations"].extend([
+            "If you have a trust fund, we assume the trust is set up with income producing investments, which return a conservative 4% a year. We assume the trust is set up to distribute these returns monthly.",
+            "For the trust fund credit, we assume you are comfortable contributing up to 70% of your monthly distribution towards your monthly costs."
+        ])
+    
     return jsonify(result)
 
 if __name__ == "__main__":
