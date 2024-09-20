@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const interestRateValue = document.getElementById('interestRateValue');
     const hasTrustFundSelect = document.getElementById('hasTrustFund');
     const trustFundAmountGroup = document.getElementById('trustFundAmountGroup');
-    const scenariosList = document.getElementById('scenariosList');
     let monthlyCostsChart = null;
 
     hasTrustFundSelect.addEventListener('change', function() {
@@ -47,8 +46,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 displayResult(data);
                 createMonthlyCostsChart(data.monthlyCosts);
-                saveScenario(data);
-                loadScenarios();
             }
         })
         .catch((error) => {
@@ -131,83 +128,4 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
-    function saveScenario(data) {
-        const scenarioName = prompt("Enter a name for this scenario:");
-        if (scenarioName) {
-            data.name = scenarioName;
-            fetch('/scenarios', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            })
-            .then(response => response.json())
-            .then(() => {
-                loadScenarios();
-            })
-            .catch(error => console.error('Error:', error));
-        }
-    }
-
-    function loadScenarios() {
-        fetch('/scenarios')
-        .then(response => response.json())
-        .then(scenarios => {
-            scenariosList.innerHTML = '';
-            for (const [id, scenario] of Object.entries(scenarios)) {
-                const scenarioElement = document.createElement('div');
-                scenarioElement.className = 'scenario';
-                scenarioElement.innerHTML = `
-                    <h3>${scenario.name || 'Unnamed Scenario'}</h3>
-                    <p>Home Price: $${scenario.result.homePrice.toLocaleString()}</p>
-                    <p>Monthly Payment: $${scenario.result.monthlyCosts.total.toLocaleString()}</p>
-                    <p>Limiting Factor: ${scenario.result.limitingFactor}</p>
-                    <button class="btn btn-sm btn-info compare-btn" data-id="${id}">Compare</button>
-                    <button class="btn btn-sm btn-danger delete-btn" data-id="${id}">Delete</button>
-                `;
-                scenariosList.appendChild(scenarioElement);
-            }
-            attachScenarioListeners();
-        })
-        .catch(error => console.error('Error:', error));
-    }
-
-    function attachScenarioListeners() {
-        document.querySelectorAll('.compare-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const scenarioId = this.getAttribute('data-id');
-                compareScenario(scenarioId);
-            });
-        });
-
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const scenarioId = this.getAttribute('data-id');
-                deleteScenario(scenarioId);
-            });
-        });
-    }
-
-    function compareScenario(scenarioId) {
-        fetch(`/scenario/${scenarioId}`)
-        .then(response => response.json())
-        .then(scenario => {
-            displayResult(scenario.result);
-            createMonthlyCostsChart(scenario.result.monthlyCosts);
-        })
-        .catch(error => console.error('Error:', error));
-    }
-
-    function deleteScenario(scenarioId) {
-        fetch(`/scenario/${scenarioId}`, { method: 'DELETE' })
-        .then(response => response.json())
-        .then(() => {
-            loadScenarios();
-        })
-        .catch(error => console.error('Error:', error));
-    }
-
-    loadScenarios();
 });

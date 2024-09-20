@@ -1,8 +1,6 @@
-from flask import Flask, render_template, request, jsonify, session
-import uuid
+from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'  # Replace with a real secret key in production
 
 VALID_CITIES = ["NYC", "Greenwich CT", "Nassau County", "Ridgewood NJ", "Summit NJ"]
 
@@ -30,7 +28,7 @@ def calculate_max_home_price(max_monthly_payment, interest_rate, city, trust_fun
     property_tax_rate = PROPERTY_TAX_RATES[city]
     monthly_hoa = HOA_FEES[city]
 
-    trust_fund_monthly_return = (trust_fund_amount * 0.04) / 12 if trust_fund_amount >= 1000000 else 0
+    trust_fund_monthly_return = 0.7 * ((trust_fund_amount * 0.04) / 12) if trust_fund_amount >= 1000000 else 0
 
     adjusted_max_monthly_payment = max_monthly_payment + trust_fund_monthly_return
 
@@ -64,7 +62,7 @@ def calculate_monthly_costs(home_price, city, interest_rate, trust_fund_amount, 
     insurance = (home_price * 0.003) / 12
     hoa = HOA_FEES[city]
     remaining_trust_fund = trust_fund_amount - down_payment['from_trust']
-    trust_fund_credit = (remaining_trust_fund * 0.04) / 12 if remaining_trust_fund >= 1000000 else 0
+    trust_fund_credit = 0.7 * ((remaining_trust_fund * 0.04) / 12) if remaining_trust_fund >= 1000000 else 0
 
     total = mortgage_payment + property_tax + insurance + hoa - trust_fund_credit
 
@@ -142,46 +140,7 @@ def calculate():
         ]
     }
     
-    scenario_id = str(uuid.uuid4())
-    
-    if 'scenarios' not in session:
-        session['scenarios'] = {}
-    session['scenarios'][scenario_id] = {
-        "inputs": data,
-        "result": result
-    }
-    session.modified = True
-    
-    return jsonify({**result, "scenarioId": scenario_id})
-
-@app.route('/scenarios', methods=['GET', 'POST'])
-def scenarios():
-    if request.method == 'GET':
-        return jsonify(session.get('scenarios', {}))
-    elif request.method == 'POST':
-        data = request.json
-        scenario_id = str(uuid.uuid4())
-        if 'scenarios' not in session:
-            session['scenarios'] = {}
-        scenario_count = len(session['scenarios']) + 1
-        data['name'] = f"Scenario {scenario_count}"
-        session['scenarios'][scenario_id] = data
-        session.modified = True
-        return jsonify({"message": "Scenario saved successfully", "scenarioId": scenario_id})
-
-@app.route('/scenario/<scenario_id>', methods=['GET', 'DELETE'])
-def scenario(scenario_id):
-    if request.method == 'GET':
-        scenario = session.get('scenarios', {}).get(scenario_id)
-        if scenario:
-            return jsonify(scenario)
-        return jsonify({"error": "Scenario not found"}), 404
-    elif request.method == 'DELETE':
-        if 'scenarios' in session and scenario_id in session['scenarios']:
-            del session['scenarios'][scenario_id]
-            session.modified = True
-            return jsonify({"message": "Scenario deleted successfully"})
-        return jsonify({"error": "Scenario not found"}), 404
+    return jsonify(result)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
