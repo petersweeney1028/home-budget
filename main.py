@@ -13,7 +13,7 @@ PROPERTY_TAX_RATES = {
 }
 
 HOA_FEES = {
-    "NYC": 1200,
+    "NYC": 1000,
     "Greenwich CT": 400,
     "Nassau County": 300,
     "Ridgewood NJ": 250,
